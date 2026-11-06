@@ -1,0 +1,54 @@
+# Ignore everything by default
+/*
+
+# Repository configuration
+!/.gitignore
+!/.gitattributes
+!/README.md
+!/LICENSE
+!/AGENTS.md
+
+# Unreal project descriptor
+!/*.uproject
+
+# Project source and build rules
+!/Source/
+!/Source/**
+
+# Project configuration
+!/Config/
+!/Config/**
+
+# Project plugin source and descriptors
+!/Plugins/
+Plugins/*
+!Plugins/*/
+Plugins/*/*
+!Plugins/*/*.uplugin
+!Plugins/*/Source/
+!Plugins/*/Source/**
+!Plugins/*/Config/
+!Plugins/*/Config/**
+
+# Generated files and local caches
+**/Binaries/
+**/Intermediate/
+**/Saved/
+**/DerivedDataCache/
+**/.vs/
+**/.idea/
+**/.vscode/
+
+# Generated IDE and operating system files
+*.sln
+*.slnx
+*.suo
+*.VC.db
+*.VC.opendb
+.DS_Store
+Thumbs.db
+
+# Logs and temporary files
+*.log
+*.tmp
+*.bak

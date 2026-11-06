@@ -3,6 +3,7 @@
 
 #include "Character/ACT_CharacterBase.h"
 #include "GameFramework/CharacterMovementComponent.h"
+#include "Combo/ACT_ComboComponent.h"
 
 // Sets default values
 AACT_CharacterBase::AACT_CharacterBase()
@@ -18,6 +19,7 @@ AACT_CharacterBase::AACT_CharacterBase()
     GetCharacterMovement()->bOrientRotationToMovement = true;
     GetCharacterMovement()->RotationRate = FRotator(0.0f, 540.0f, 0.0f);
 
+    ComboComponent = CreateDefaultSubobject<UACT_ComboComponent>(TEXT("ComboComponent"));
 }
 
 // Called when the game starts or when spawned

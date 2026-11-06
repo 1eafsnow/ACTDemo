@@ -6,6 +6,8 @@
 #include "GameFramework/Character.h"
 #include "ACT_CharacterBase.generated.h"
 
+class UACT_ComboComponent;
+
 /**
  * Common base class for player and enemy characters.
  */
@@ -13,6 +15,10 @@ UCLASS()
 class ACTDEMO_API AACT_CharacterBase : public ACharacter
 {
 	GENERATED_BODY()
+
+protected:
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Combat")
+	TObjectPtr<UACT_ComboComponent> ComboComponent;
 
 public:
 	// Sets default values for this character's properties

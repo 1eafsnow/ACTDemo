@@ -9,7 +9,7 @@
 /**
  * Ability system component shared by ACT characters.
  */
-UCLASS(ClassGroup = (Abilities), meta = (BlueprintSpawnableComponent))
+UCLASS(BlueprintType, Blueprintable, ClassGroup = (Abilities), meta = (BlueprintSpawnableComponent))
 class ACTDEMO_API UACT_AbilitySystemComponent : public UAbilitySystemComponent
 {
 	GENERATED_BODY()

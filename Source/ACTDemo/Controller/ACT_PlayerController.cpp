@@ -66,6 +66,15 @@ void AACT_PlayerController::SetupInputComponent()
     {
         EnhancedInput->BindAction(LookAction, ETriggerEvent::Triggered, this, &AACT_PlayerController::Look);
     }
+    if (LightAttackAction)
+    {
+        EnhancedInput->BindAction(LightAttackAction, ETriggerEvent::Triggered, this, &AACT_PlayerController::LightAttack);
+    }
+
+    if (TargetLockAction)
+    {
+        EnhancedInput->BindAction(TargetLockAction, ETriggerEvent::Triggered, this, &AACT_PlayerController::ToggleTargetLock);
+    }
 }
 
 void AACT_PlayerController::Move(const FInputActionValue& Value)
@@ -89,7 +98,8 @@ void AACT_PlayerController::Move(const FInputActionValue& Value)
 
 void AACT_PlayerController::Look(const FInputActionValue& Value)
 {
-    if (!GetPawn())
+    AACT_CharacterBase* ControlledCharacter = Cast<AACT_CharacterBase>(GetPawn());
+    if (!ControlledCharacter || ControlledCharacter->IsTargetLocked())
     {
         return;
     }
@@ -97,4 +107,29 @@ void AACT_PlayerController::Look(const FInputActionValue& Value)
     const FVector2D Axis = Value.Get<FVector2D>();
     AddYawInput(Axis.X);
     AddPitchInput(Axis.Y);
+}
+
+void AACT_PlayerController::LightAttack()
+{
+    AACT_CharacterBase* ControlledCharacter = Cast<AACT_CharacterBase>(GetPawn());
+
+    if (!ControlledCharacter || !LightAttackAbilityTag.IsValid())
+    {
+        ACTDebug::Screen(TEXT("Light attack failed: character or ability tag is invalid."), 13, 10.0f, FColor::Red);
+        return;
+    }
+
+    const bool bActivated = ControlledCharacter->TryActivateAbilityByTag(LightAttackAbilityTag);
+
+     if (!bActivated) ACTDebug::Screen(TEXT("Light attack activation failed."), 13, 10.0f, FColor::Red);
+}
+
+void AACT_PlayerController::ToggleTargetLock()
+{
+    AACT_CharacterBase* ControlledCharacter = Cast<AACT_CharacterBase>(GetPawn());
+
+    if (ControlledCharacter)
+    {
+        ControlledCharacter->ToggleTargetLock();
+    }
 }

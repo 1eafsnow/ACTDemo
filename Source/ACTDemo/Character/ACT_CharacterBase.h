@@ -51,6 +51,18 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Abilities")
 	bool TryActivateAbilityByTag(FGameplayTag AbilityTag);
 
+	UFUNCTION(BlueprintCallable, Category = "Target Lock")
+	void ToggleTargetLock();
+
+	UFUNCTION(BlueprintCallable, Category = "Target Lock")
+	void UnlockTarget();
+
+	UFUNCTION(BlueprintPure, Category = "Target Lock")
+	bool IsTargetLocked() const;
+
+	UFUNCTION(BlueprintPure, Category = "Target Lock")
+	AActor* GetLockTarget() const;
+
 protected:
 	virtual void PossessedBy(AController* NewController) override;
 	virtual void OnRep_Controller() override;
@@ -62,10 +74,39 @@ protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Abilities")
 	TObjectPtr<UACT_AbilitySystemComponent> AbilitySystemComponent;
 
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Target Lock")
+	FName LockTargetTag = TEXT("Enemy");
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Target Lock", meta = (ClampMin = "0.0"))
+	float LockSearchDistance = 1500.0f;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Target Lock", meta = (ClampMin = "0.0"))
+	float LockBreakDistance = 2000.0f;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Target Lock", meta = (ClampMin = "0.0", ClampMax = "180.0"))
+	float LockSearchHalfAngle = 60.0f;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Target Lock", meta = (ClampMin = "0.0"))
+	float LockCameraRotationSpeed = 5.0f;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Target Lock", meta = (ClampMin = "0.0"))
+	float LockCharacterRotationSpeed = 3.0f;
+
+	// Additional downward camera pitch while locked onto a target.
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Target Lock|Camera", meta = (ClampMin = "0.0", ClampMax = "45.0"))
+	float LockCameraDownPitch = 20.0f;
+
 private:
 	void InitializeAbilityActorInfo();
 	void GrantDefaultAbilities();
 
 	bool bDefaultAbilitiesGranted = false;
+
+	AActor* FindLockTarget() const;
+	void UpdateTargetLock(float DeltaTime);
+
+	TWeakObjectPtr<AActor> LockTarget;
+	bool bHadLockTarget = false;
+	bool bPreviousOrientRotationToMovement = true;
 
 };

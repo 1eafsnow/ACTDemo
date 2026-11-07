@@ -13,8 +13,10 @@ UACT_ComboComponent::UACT_ComboComponent()
 	// ...
 }
 
-bool UACT_ComboComponent::StartCombo(UACT_ComboData* ComboData, FGameplayTag InputTag)
+bool UACT_ComboComponent::StartCombo(UACT_ComboData* ComboData, FGameplayTag InputTag, FACT_ComboNode& OutAttackNode)
 {
+    OutAttackNode = FACT_ComboNode();
+
     if (IsComboActive() || !IsValid(ComboData) || !InputTag.IsValid())
     {
         return false;
@@ -23,13 +25,16 @@ bool UACT_ComboComponent::StartCombo(UACT_ComboData* ComboData, FGameplayTag Inp
     ActiveComboData = ComboData;
 
     const FName EntryNodeId = FindEntryNode(InputTag);
+    const FACT_ComboNode* EntryNode = FindNode(EntryNodeId);
 
-    if (EntryNodeId.IsNone() || !RequestAttack(EntryNodeId))
+    if (!EntryNode || !EntryNode->Montage)
     {
         ResetState();
         return false;
     }
 
+    PendingNodeId = EntryNodeId;
+    OutAttackNode = *EntryNode;
     return true;
 }
 
@@ -60,8 +65,10 @@ void UACT_ComboComponent::CloseInputWindow()
     BufferedInput = FGameplayTag();
 }
 
-bool UACT_ComboComponent::CommitTransition()
+bool UACT_ComboComponent::CommitTransition(FACT_ComboNode& OutAttackNode)
 {
+    OutAttackNode = FACT_ComboNode();
+
     if (!IsComboActive() || !bInputWindowOpen || !BufferedInput.IsValid() || !PendingNodeId.IsNone())
     {
         return false;
@@ -72,12 +79,16 @@ bool UACT_ComboComponent::CommitTransition()
     BufferedInput = FGameplayTag();
     bInputWindowOpen = false;
 
-    if (NextNodeId.IsNone())
+    const FACT_ComboNode* NextNode = FindNode(NextNodeId);
+
+    if (!NextNode || !NextNode->Montage)
     {
         return false;
     }
 
-    return RequestAttack(NextNodeId);
+    PendingNodeId = NextNodeId;
+    OutAttackNode = *NextNode;
+    return true;
 }
 
 bool UACT_ComboComponent::ConfirmAttack(bool bAccepted)
@@ -126,6 +137,16 @@ FName UACT_ComboComponent::GetCurrentNodeId() const
     return CurrentNodeId;
 }
 
+void UACT_ComboComponent::NotifyAttackStarted()
+{
+    const FACT_ComboNode* CurrentNode = FindNode(CurrentNodeId);
+
+    if (CurrentNode)
+    {
+        OnAttackStarted.Broadcast(*CurrentNode);
+    }
+}
+
 void UACT_ComboComponent::EndPlay(const EEndPlayReason::Type EndPlayReason)
 {
     ResetState();
@@ -166,20 +187,6 @@ FName UACT_ComboComponent::FindNextNode(FGameplayTag InputTag) const
     const FACT_ComboTransition* Transition = CurrentNode->Transitions.FindByPredicate([InputTag](const FACT_ComboTransition& Item) { return Item.InputTag == InputTag; });
 
     return Transition ? Transition->NextNodeId : NAME_None;
-}
-
-bool UACT_ComboComponent::RequestAttack(FName NodeId)
-{
-    const FACT_ComboNode* Node = FindNode(NodeId);
-
-    if (!Node || !Node->Montage)
-    {
-        return false;
-    }
-
-    PendingNodeId = NodeId;
-    OnAttackRequested.Broadcast(*Node);
-    return true;
 }
 
 void UACT_ComboComponent::ResetState()

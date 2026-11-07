@@ -8,8 +8,8 @@
 #include "ACT_ComboData.h"
 #include "ACT_ComboComponent.generated.h"
 
-/** Sent when an attack node needs to be validated and played. */
-DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FACT_OnAttackRequested, const FACT_ComboNode&, AttackNode);
+/** Sent after an attack montage has started successfully. */
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FACT_OnAttackStarted, const FACT_ComboNode&, AttackNode);
 
 /** Sent when an active combo ends or is cancelled. */
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FACT_OnComboEnded);
@@ -17,7 +17,7 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE(FACT_OnComboEnded);
 /**
  * Tracks combo state and resolves transitions between attack nodes.
  */
-UCLASS(ClassGroup = (Combat), meta = (BlueprintSpawnableComponent))
+UCLASS(BlueprintType, Blueprintable, ClassGroup = (Combat), meta = (BlueprintSpawnableComponent))
 class ACTDEMO_API UACT_ComboComponent : public UActorComponent
 {
 	GENERATED_BODY()
@@ -26,12 +26,9 @@ public:
 	// Sets default values for this component's properties
 	UACT_ComboComponent();
 
-    /**
-     * Starts a combo by requesting an entry node.
-     * The attack remains pending until ConfirmAttack is called.
-     */
+    /** Finds the entry attack and marks it as pending confirmation. */
     UFUNCTION(BlueprintCallable, Category = "Combo")
-    bool StartCombo(UACT_ComboData* ComboData, FGameplayTag InputTag);
+    bool StartCombo(UACT_ComboData* ComboData, FGameplayTag InputTag, FACT_ComboNode& OutAttackNode);
 
     /**
      * Stores the latest input while the combo input window is open.
@@ -45,11 +42,9 @@ public:
     UFUNCTION(BlueprintCallable, Category = "Combo")
     void CloseInputWindow();
 
-    /**
-     * Resolves the buffered input and requests the next attack.
-     */
+    /** Resolves buffered input and returns the next attack pending confirmation. */
     UFUNCTION(BlueprintCallable, Category = "Combo")
-    bool CommitTransition();
+    bool CommitTransition(FACT_ComboNode& OutAttackNode);
 
     /**
      * Accepts or rejects the currently pending attack.
@@ -73,10 +68,14 @@ public:
     FName GetCurrentNodeId() const;
 
     UPROPERTY(BlueprintAssignable, Category = "Combo")
-    FACT_OnAttackRequested OnAttackRequested;
+    FACT_OnComboEnded OnComboEnded;
+
+    /** Notifies listeners that the confirmed attack has started playing. */
+    UFUNCTION(BlueprintCallable, Category = "Combo")
+    void NotifyAttackStarted();
 
     UPROPERTY(BlueprintAssignable, Category = "Combo")
-    FACT_OnComboEnded OnComboEnded;
+    FACT_OnAttackStarted OnAttackStarted;
 
 protected:
     virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
@@ -85,7 +84,6 @@ private:
     const FACT_ComboNode* FindNode(FName NodeId) const;
     FName FindEntryNode(FGameplayTag InputTag) const;
     FName FindNextNode(FGameplayTag InputTag) const;
-    bool RequestAttack(FName NodeId);
     void ResetState();
 
     UPROPERTY(Transient)

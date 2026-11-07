@@ -2,16 +2,20 @@
 
 
 #include "Character/ACT_CharacterBase.h"
+#include "Debug/ACT_Debug.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "Ability/ACT_AbilitySystemComponent.h"
 #include "Abilities/GameplayAbility.h"
 #include "Combo/ACT_ComboComponent.h"
+#include "EngineUtils.h"
+#include "GameFramework/Controller.h"
 
 // Sets default values
 AACT_CharacterBase::AACT_CharacterBase()
 {
  	// Set this character to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
-    PrimaryActorTick.bCanEverTick = false;
+    PrimaryActorTick.bCanEverTick = true;
+    PrimaryActorTick.bStartWithTickEnabled = false;
 
     bUseControllerRotationPitch = false;
     bUseControllerRotationYaw = false;
@@ -40,6 +44,10 @@ void AACT_CharacterBase::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
 
+    if (bHadLockTarget)
+    {
+        UpdateTargetLock(DeltaTime);
+    }
 }
 
 void AACT_CharacterBase::MoveInWorldDirection(FVector Direction, float Scale)
@@ -103,4 +111,118 @@ bool AACT_CharacterBase::TryActivateAbilityByTag(FGameplayTag AbilityTag)
     }
 
     return AbilitySystemComponent->TryActivateAbilitiesByTag(FGameplayTagContainer(AbilityTag));
+}
+
+void AACT_CharacterBase::ToggleTargetLock()
+{
+    if (bHadLockTarget)
+    {
+        UnlockTarget();
+        return;
+    }
+
+    AActor* NewTarget = FindLockTarget();
+
+    if (!NewTarget || !Controller)
+    {
+        ACTDebug::Screen(TEXT("FindLockTarget Failed"));
+        return;
+    }
+
+    LockTarget = NewTarget;
+    bHadLockTarget = true;
+
+    bPreviousOrientRotationToMovement = GetCharacterMovement()->bOrientRotationToMovement;
+    GetCharacterMovement()->bOrientRotationToMovement = false;
+
+    SetActorTickEnabled(true);
+}
+
+void AACT_CharacterBase::UnlockTarget()
+{
+    LockTarget.Reset();
+    bHadLockTarget = false;
+
+    GetCharacterMovement()->bOrientRotationToMovement = bPreviousOrientRotationToMovement;
+
+    SetActorTickEnabled(false);
+}
+
+bool AACT_CharacterBase::IsTargetLocked() const
+{
+    return bHadLockTarget && LockTarget.IsValid();
+}
+
+AActor* AACT_CharacterBase::GetLockTarget() const
+{
+    return LockTarget.Get();
+}
+
+AActor* AACT_CharacterBase::FindLockTarget() const
+{
+    if (!Controller || !GetWorld())
+    {
+        return nullptr;
+    }
+
+    const FVector Origin = GetActorLocation();
+    const FVector ViewDirection = Controller->GetControlRotation().Vector().GetSafeNormal2D();
+    const float MinimumDot = FMath::Cos(FMath::DegreesToRadians(LockSearchHalfAngle));
+
+    AActor* BestTarget = nullptr;
+    float BestDistanceSquared = FMath::Square(LockSearchDistance);
+
+    for (TActorIterator<ACharacter> It(GetWorld()); It; ++It)
+    {
+        ACharacter* Candidate = *It;
+
+        if (!IsValid(Candidate) || Candidate == this || !Candidate->ActorHasTag(LockTargetTag))
+        {
+            continue;
+        }
+
+        const FVector Offset = Candidate->GetActorLocation() - Origin;
+        const float DistanceSquared = Offset.SizeSquared();
+
+        if (DistanceSquared > BestDistanceSquared)
+        {
+            continue;
+        }
+
+        const FVector Direction = Offset.GetSafeNormal2D();
+
+        if (Direction.IsNearlyZero() || FVector::DotProduct(ViewDirection, Direction) < MinimumDot)
+        {
+            continue;
+        }
+
+        BestTarget = Candidate;
+        BestDistanceSquared = DistanceSquared;
+    }
+
+    return BestTarget;
+}
+
+void AACT_CharacterBase::UpdateTargetLock(float DeltaTime)
+{
+    AActor* Target = LockTarget.Get();
+
+    if (!IsValid(Target) || !Controller || FVector::DistSquared(GetActorLocation(), Target->GetActorLocation()) > FMath::Square(LockBreakDistance))
+    {
+        UnlockTarget();
+        return;
+    }
+
+    const FVector TargetOffset = Target->GetActorLocation() - GetActorLocation();
+    const FRotator TargetRotation = TargetOffset.Rotation();
+
+    const FRotator CurrentControlRotation = Controller->GetControlRotation();
+    const FRotator TargetCameraRotation(TargetRotation.Pitch - LockCameraDownPitch, TargetRotation.Yaw, 0.0f);
+    const FRotator NewControlRotation = FMath::RInterpTo(CurrentControlRotation, TargetCameraRotation, DeltaTime, LockCameraRotationSpeed);
+    Controller->SetControlRotation(NewControlRotation);
+
+    const FRotator CurrentCharacterRotation = GetActorRotation();
+    const FRotator TargetCharacterRotation(0.0f, TargetRotation.Yaw, 0.0f);
+    const FRotator NewCharacterRotation = FMath::RInterpTo(CurrentCharacterRotation, TargetCharacterRotation, DeltaTime, LockCharacterRotationSpeed);
+    SetActorRotation(NewCharacterRotation);
 }

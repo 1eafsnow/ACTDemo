@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/PlayerController.h"
+#include "GameplayTagContainer.h"
 #include "ACT_PlayerController.generated.h"
 
 class UInputAction;
@@ -37,9 +38,25 @@ protected:
     UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Input")
     TObjectPtr<UInputAction> LookAction;
 
+    // Input action used for light attacks.
+    UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Input")
+    TObjectPtr<UInputAction> LightAttackAction;
+
+    // Asset tag used to find the granted light attack ability.
+    UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Input")
+    FGameplayTag LightAttackAbilityTag;
+
+    // Input action used to toggle target lock.
+    UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Input")
+    TObjectPtr<UInputAction> TargetLockAction;
+
 private:
     void Move(const FInputActionValue& Value);
 
     void Look(const FInputActionValue& Value);
+
+    void LightAttack();
+
+    void ToggleTargetLock();
 	
 };

@@ -63,6 +63,20 @@ public:
 	UFUNCTION(BlueprintPure, Category = "Target Lock")
 	AActor* GetLockTarget() const;
 
+	/** Starts an attack ability or submits input to the active combo. */
+	UFUNCTION(BlueprintCallable, Category = "Combat")
+	bool RequestLightAttack(FGameplayTag AbilityTag, FGameplayTag InputTag);
+
+	/** Stores the current movement input in world space. */
+	void SetMoveIntent(const FVector& Direction);
+
+	/** Opens or closes the attack turning window. */
+	UFUNCTION(BlueprintCallable, Category = "Combat|Rotation")
+	void SetAttackTurnWindow(bool bOpen);
+
+	UFUNCTION(BlueprintPure, Category = "Combat|Rotation")
+	bool IsAttackTurnWindowOpen() const;
+
 protected:
 	virtual void PossessedBy(AController* NewController) override;
 	virtual void OnRep_Controller() override;
@@ -96,6 +110,10 @@ protected:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Target Lock|Camera", meta = (ClampMin = "0.0", ClampMax = "45.0"))
 	float LockCameraDownPitch = 20.0f;
 
+	// Controls how quickly the character turns during attack startup.
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Combat|Rotation", meta = (ClampMin = "0.0"))
+	float AttackTurnSpeed = 12.0f;
+
 private:
 	void InitializeAbilityActorInfo();
 	void GrantDefaultAbilities();
@@ -109,4 +127,12 @@ private:
 	bool bHadLockTarget = false;
 	bool bPreviousOrientRotationToMovement = true;
 
+	void UpdateAttackTurn(float DeltaTime);
+
+	FVector MoveIntent = FVector::ZeroVector;
+	bool bAttackTurnWindowOpen = false;
+
+	void CaptureAttackDirection();
+
+	FVector AttackDirection = FVector::ForwardVector;
 };

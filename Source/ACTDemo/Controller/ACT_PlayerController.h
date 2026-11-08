@@ -46,6 +46,10 @@ protected:
     UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Input")
     FGameplayTag LightAttackAbilityTag;
 
+    // Input tag submitted to the active combo.
+    UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Input")
+    FGameplayTag LightAttackInputTag;
+
     // Input action used to toggle target lock.
     UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Input")
     TObjectPtr<UInputAction> TargetLockAction;
@@ -58,5 +62,7 @@ private:
     void LightAttack();
 
     void ToggleTargetLock();
+
+    void StopMove();
 	
 };

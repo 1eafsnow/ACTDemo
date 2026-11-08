@@ -2,6 +2,7 @@
 
 
 #include "Combo/ACT_ComboComponent.h"
+#include "Debug/ACT_Debug.h"
 
 // Sets default values for this component's properties
 UACT_ComboComponent::UACT_ComboComponent()

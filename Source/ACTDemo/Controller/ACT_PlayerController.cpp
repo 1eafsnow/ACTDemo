@@ -61,6 +61,8 @@ void AACT_PlayerController::SetupInputComponent()
     if (MoveAction)
     {
         EnhancedInput->BindAction(MoveAction, ETriggerEvent::Triggered, this, &AACT_PlayerController::Move);
+        EnhancedInput->BindAction(MoveAction, ETriggerEvent::Completed, this, &AACT_PlayerController::StopMove);
+        EnhancedInput->BindAction(MoveAction, ETriggerEvent::Canceled, this, &AACT_PlayerController::StopMove);
     }
     if (LookAction)
     {
@@ -92,6 +94,9 @@ void AACT_PlayerController::Move(const FInputActionValue& Value)
     const FRotator YawRotation(0.0f, GetControlRotation().Yaw, 0.0f);
     const FRotationMatrix Rotation(YawRotation);
 
+    const FVector MoveIntent = Rotation.GetUnitAxis(EAxis::X) * Axis.Y + Rotation.GetUnitAxis(EAxis::Y) * Axis.X;
+    ControlledCharacter->SetMoveIntent(MoveIntent);
+
     ControlledCharacter->MoveInWorldDirection(Rotation.GetUnitAxis(EAxis::X), Axis.Y);
     ControlledCharacter->MoveInWorldDirection(Rotation.GetUnitAxis(EAxis::Y), Axis.X);
 }
@@ -113,15 +118,15 @@ void AACT_PlayerController::LightAttack()
 {
     AACT_CharacterBase* ControlledCharacter = Cast<AACT_CharacterBase>(GetPawn());
 
-    if (!ControlledCharacter || !LightAttackAbilityTag.IsValid())
+    if (!ControlledCharacter || !LightAttackAbilityTag.IsValid() || !LightAttackInputTag.IsValid())
     {
-        ACTDebug::Screen(TEXT("Light attack failed: character or ability tag is invalid."), 13, 10.0f, FColor::Red);
+        UE_LOG(LogTemp, Warning, TEXT("Light attack failed: character or input tags are invalid."));
         return;
     }
 
-    const bool bActivated = ControlledCharacter->TryActivateAbilityByTag(LightAttackAbilityTag);
+    const bool bAccepted = ControlledCharacter->RequestLightAttack(LightAttackAbilityTag, LightAttackInputTag);
 
-     if (!bActivated) ACTDebug::Screen(TEXT("Light attack activation failed."), 13, 10.0f, FColor::Red);
+    UE_LOG(LogTemp, Log, TEXT("Light attack input %s."), bAccepted ? TEXT("accepted") : TEXT("not accepted"));
 }
 
 void AACT_PlayerController::ToggleTargetLock()
@@ -131,5 +136,15 @@ void AACT_PlayerController::ToggleTargetLock()
     if (ControlledCharacter)
     {
         ControlledCharacter->ToggleTargetLock();
+    }
+}
+
+void AACT_PlayerController::StopMove()
+{
+    AACT_CharacterBase* ControlledCharacter = Cast<AACT_CharacterBase>(GetPawn());
+
+    if (ControlledCharacter)
+    {
+        ControlledCharacter->SetMoveIntent(FVector::ZeroVector);
     }
 }

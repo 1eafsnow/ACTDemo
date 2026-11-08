@@ -10,15 +10,16 @@
 
 class UACT_ComboComponent;
 class UACT_ComboData;
+class UAnimMontage;
 
 /**
- * Minimal combo ability that plays the entry attack.
+ * Plays combo attacks from sections of one montage.
  */
 UCLASS()
 class ACTDEMO_API UACT_GameplayAbility_Combo : public UGameplayAbility
 {
-	GENERATED_BODY()
-	
+    GENERATED_BODY()
+
 public:
     UACT_GameplayAbility_Combo();
 
@@ -26,17 +27,25 @@ protected:
     virtual void ActivateAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo, const FGameplayEventData* TriggerEventData) override;
     virtual void EndAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo, bool bReplicateEndAbility, bool bWasCancelled) override;
 
-    /** Combo configuration used by this ability. */
     UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Combo")
     TObjectPtr<UACT_ComboData> ComboData;
 
-    /** Input used to select the first combo node. */
     UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Combo")
     FGameplayTag EntryInputTag;
 
 private:
+    bool StartFirstAttack(const FACT_ComboNode& AttackNode);
+    bool TransitionToAttack(const FACT_ComboNode& AttackNode);
+    bool StartWindowEventTasks();
+
     UFUNCTION()
-    void HandleAttackRequested(const FACT_ComboNode& AttackNode);
+    void HandleWindowOpen(FGameplayEventData Payload);
+
+    UFUNCTION()
+    void HandleTransition(FGameplayEventData Payload);
+
+    UFUNCTION()
+    void HandleWindowClose(FGameplayEventData Payload);
 
     UFUNCTION()
     void HandleMontageCompleted();
@@ -46,4 +55,28 @@ private:
 
     UPROPERTY(Transient)
     TObjectPtr<UACT_ComboComponent> ActiveComboComponent;
+
+    UPROPERTY(Transient)
+    TObjectPtr<UAnimMontage> ActiveMontage;
+
+    bool bOwnsCombo = false;
+    bool bEndingAbility = false;
+
+    void TryCommitBufferedInput();
+
+    UFUNCTION()
+    void HandleComboInput(FGameplayEventData Payload);
+
+    bool bTransitionReached = false;
+
+    bool StartTurnWindowEventTasks();
+
+    UFUNCTION()
+    void HandleTurnWindowOpen(FGameplayEventData Payload);
+
+    UFUNCTION()
+    void HandleTurnWindowClose(FGameplayEventData Payload);
+
+    TWeakObjectPtr<class AACT_CharacterBase> TurnWindowCharacter;
+    bool bOwnsTurnWindow = false;
 };

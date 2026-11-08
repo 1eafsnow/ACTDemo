@@ -9,6 +9,7 @@
 #include "Combo/ACT_ComboComponent.h"
 #include "EngineUtils.h"
 #include "GameFramework/Controller.h"
+#include "AbilitySystemBlueprintLibrary.h"
 
 // Sets default values
 AACT_CharacterBase::AACT_CharacterBase()
@@ -47,6 +48,11 @@ void AACT_CharacterBase::Tick(float DeltaTime)
     if (bHadLockTarget)
     {
         UpdateTargetLock(DeltaTime);
+    }
+
+    if (bAttackTurnWindowOpen)
+    {
+        UpdateAttackTurn(DeltaTime);
     }
 }
 
@@ -145,7 +151,7 @@ void AACT_CharacterBase::UnlockTarget()
 
     GetCharacterMovement()->bOrientRotationToMovement = bPreviousOrientRotationToMovement;
 
-    SetActorTickEnabled(false);
+    SetActorTickEnabled(bAttackTurnWindowOpen);
 }
 
 bool AACT_CharacterBase::IsTargetLocked() const
@@ -225,4 +231,69 @@ void AACT_CharacterBase::UpdateTargetLock(float DeltaTime)
     const FRotator TargetCharacterRotation(0.0f, TargetRotation.Yaw, 0.0f);
     const FRotator NewCharacterRotation = FMath::RInterpTo(CurrentCharacterRotation, TargetCharacterRotation, DeltaTime, LockCharacterRotationSpeed);
     SetActorRotation(NewCharacterRotation);
+}
+
+bool AACT_CharacterBase::RequestLightAttack(FGameplayTag AbilityTag, FGameplayTag InputTag)
+{
+    if (!ComboComponent || !AbilityTag.IsValid() || !InputTag.IsValid())
+    {
+        return false;
+    }
+
+    if (ComboComponent->IsComboActive())
+    {
+        if (!ComboComponent->SubmitInput(InputTag))
+        {
+            return false;
+        }
+
+        CaptureAttackDirection();
+
+        const FGameplayTag EventTag = FGameplayTag::RequestGameplayTag(TEXT("Event.Combo.Input"));
+
+        FGameplayEventData EventData;
+        EventData.EventTag = EventTag;
+        EventData.Instigator = this;
+
+        UAbilitySystemBlueprintLibrary::SendGameplayEventToActor(this, EventTag, EventData);
+        return true;
+    }
+
+    CaptureAttackDirection();
+    return TryActivateAbilityByTag(AbilityTag);
+}
+
+void AACT_CharacterBase::SetMoveIntent(const FVector& Direction)
+{
+    MoveIntent = Direction.GetClampedToMaxSize2D(1.0f);
+}
+
+void AACT_CharacterBase::SetAttackTurnWindow(bool bOpen)
+{
+    bAttackTurnWindowOpen = bOpen;
+
+    SetActorTickEnabled(bHadLockTarget || bAttackTurnWindowOpen);
+}
+
+bool AACT_CharacterBase::IsAttackTurnWindowOpen() const
+{
+    return bAttackTurnWindowOpen;
+}
+
+void AACT_CharacterBase::UpdateAttackTurn(float DeltaTime)
+{
+    if (!bAttackTurnWindowOpen || IsTargetLocked() || AttackDirection.IsNearlyZero())
+    {
+        return;
+    }
+
+    const FRotator TargetRotation(0.0f, AttackDirection.Rotation().Yaw, 0.0f);
+    const FRotator NewRotation = FMath::RInterpTo(GetActorRotation(), TargetRotation, DeltaTime, AttackTurnSpeed);
+
+    SetActorRotation(NewRotation);
+}
+
+void AACT_CharacterBase::CaptureAttackDirection()
+{
+    AttackDirection = MoveIntent.IsNearlyZero() ? GetActorForwardVector().GetSafeNormal2D() : MoveIntent.GetSafeNormal2D();
 }

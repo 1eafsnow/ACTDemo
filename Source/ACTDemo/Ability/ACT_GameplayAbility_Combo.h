@@ -23,12 +23,11 @@ class ACTDEMO_API UACT_GameplayAbility_Combo : public UGameplayAbility
 public:
     UACT_GameplayAbility_Combo();
 
+    virtual bool CanActivateAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, const FGameplayTagContainer* SourceTags = nullptr, const FGameplayTagContainer* TargetTags = nullptr, FGameplayTagContainer* OptionalRelevantTags = nullptr) const override;
+
 protected:
     virtual void ActivateAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo, const FGameplayEventData* TriggerEventData) override;
     virtual void EndAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo, bool bReplicateEndAbility, bool bWasCancelled) override;
-
-    UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Combo")
-    TObjectPtr<UACT_ComboData> ComboData;
 
     UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Combo")
     FGameplayTag EntryInputTag;

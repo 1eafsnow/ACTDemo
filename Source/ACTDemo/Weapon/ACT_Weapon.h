@@ -21,17 +21,17 @@ public:
 	// Sets default values for this actor's properties
 	AACT_Weapon();
 
-	/** Applies the weapon definition to this actor. */
-	void InitializeWeapon(UACT_WeaponData* InDefinition);
+	/** Applies the weapon data to this actor. */
+	void InitializeWeapon(UACT_WeaponData* InData);
 
 	UFUNCTION(BlueprintPure, Category = "Weapon")
-	UACT_WeaponData* GetWeaponDefinition() const;
+	UACT_WeaponData* GetWeaponData() const;
 
 protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Weapon")
 	TObjectPtr<UStaticMeshComponent> WeaponMesh;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Weapon")
-	TObjectPtr<UACT_WeaponData> WeaponDefinition;
+	TObjectPtr<UACT_WeaponData> WeaponData;
 
 };

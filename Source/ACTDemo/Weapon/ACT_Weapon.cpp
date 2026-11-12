@@ -15,14 +15,14 @@ AACT_Weapon::AACT_Weapon()
     WeaponMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 }
 
-void AACT_Weapon::InitializeWeapon(UACT_WeaponData* InDefinition)
+void AACT_Weapon::InitializeWeapon(UACT_WeaponData* InData)
 {
-    WeaponDefinition = InDefinition;
-    WeaponMesh->SetStaticMesh(InDefinition ? InDefinition->WeaponMesh.Get() : nullptr);
+    WeaponData = InData;
+    WeaponMesh->SetStaticMesh(InData ? InData->WeaponMesh.Get() : nullptr);
 }
 
-UACT_WeaponData* AACT_Weapon::GetWeaponDefinition() const
+UACT_WeaponData* AACT_Weapon::GetWeaponData() const
 {
-    return WeaponDefinition;
+    return WeaponData;
 }
 

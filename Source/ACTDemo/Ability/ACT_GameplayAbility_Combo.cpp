@@ -11,10 +11,35 @@
 #include "GameFramework/Actor.h"
 #include "Character/ACT_CharacterBase.h"
 #include "Weapon/ACT_EquipmentComponent.h"
+#include "Weapon/ACT_Weapon.h"
 
 UACT_GameplayAbility_Combo::UACT_GameplayAbility_Combo()
 {
     InstancingPolicy = EGameplayAbilityInstancingPolicy::InstancedPerActor;
+}
+
+bool UACT_GameplayAbility_Combo::CanActivateAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, const FGameplayTagContainer* SourceTags, const FGameplayTagContainer* TargetTags, FGameplayTagContainer* OptionalRelevantTags) const
+{
+    if (!Super::CanActivateAbility(Handle, ActorInfo, SourceTags, TargetTags, OptionalRelevantTags))
+    {
+        return false;
+    }
+
+    const AACT_CharacterBase* CharacterBase = ActorInfo ? Cast<AACT_CharacterBase>(ActorInfo->AvatarActor.Get()) : nullptr;
+
+    if (!CharacterBase)
+    {
+        return false;
+    }
+
+    const UACT_EquipmentComponent* Equipment = CharacterBase->GetEquipmentComponent();
+
+    if (!IsValid(Equipment) || !IsValid(Equipment->GetEquippedWeapon()))
+    {
+        return false;
+    }
+
+    return IsValid(Equipment->GetWeaponComboData());
 }
 
 void UACT_GameplayAbility_Combo::ActivateAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo, const FGameplayEventData* TriggerEventData)
@@ -35,7 +60,7 @@ void UACT_GameplayAbility_Combo::ActivateAbility(const FGameplayAbilitySpecHandl
 
     if (!ActorInfo || !ActorInfo->AvatarActor.IsValid() || !EntryInputTag.IsValid())
     {
-        UE_LOG(LogTemp, Warning, TEXT("Combo ability is missing an avatar, combo data, or entry input tag."));
+        UE_LOG(LogTemp, Warning, TEXT("Combo ability is missing an avatar or entry input tag."));
         EndAbility(Handle, ActorInfo, ActivationInfo, true, true);
         return;
     }
@@ -66,15 +91,21 @@ void UACT_GameplayAbility_Combo::ActivateAbility(const FGameplayAbilitySpecHandl
         return;
     }
 
-    UACT_ComboData* SelectedComboData = ComboData;
     AACT_CharacterBase* CharacterBase = Cast<AACT_CharacterBase>(ActorInfo->AvatarActor.Get());
-    if (CharacterBase && CharacterBase->GetEquipmentComponent() && CharacterBase->GetEquipmentComponent()->GetWeaponComboData())
+    UACT_EquipmentComponent* Equipment = CharacterBase ? CharacterBase->GetEquipmentComponent() : nullptr;
+
+    if (!IsValid(Equipment) || !IsValid(Equipment->GetEquippedWeapon()))
     {
-        SelectedComboData = CharacterBase->GetEquipmentComponent()->GetWeaponComboData();
+        UE_LOG(LogTemp, Warning, TEXT("Cannot start a combo without an equipped weapon."));
+        EndAbility(Handle, ActorInfo, ActivationInfo, true, true);
+        return;
     }
-    if (!SelectedComboData)
+
+    UACT_ComboData* SelectedComboData = Equipment->GetWeaponComboData();
+
+    if (!IsValid(SelectedComboData))
     {
-        UE_LOG(LogTemp, Warning, TEXT("No combo data is available for the equipped weapon."));
+        UE_LOG(LogTemp, Warning, TEXT("The equipped weapon has no combo data."));
         EndAbility(Handle, ActorInfo, ActivationInfo, true, true);
         return;
     }

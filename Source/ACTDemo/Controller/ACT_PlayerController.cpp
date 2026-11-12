@@ -101,6 +101,16 @@ void AACT_PlayerController::Move(const FInputActionValue& Value)
     ControlledCharacter->MoveInWorldDirection(Rotation.GetUnitAxis(EAxis::Y), Axis.X);
 }
 
+void AACT_PlayerController::StopMove()
+{
+    AACT_CharacterBase* ControlledCharacter = Cast<AACT_CharacterBase>(GetPawn());
+
+    if (ControlledCharacter)
+    {
+        ControlledCharacter->SetMoveIntent(FVector::ZeroVector);
+    }
+}
+
 void AACT_PlayerController::Look(const FInputActionValue& Value)
 {
     AACT_CharacterBase* ControlledCharacter = Cast<AACT_CharacterBase>(GetPawn());
@@ -136,15 +146,5 @@ void AACT_PlayerController::ToggleTargetLock()
     if (ControlledCharacter)
     {
         ControlledCharacter->ToggleTargetLock();
-    }
-}
-
-void AACT_PlayerController::StopMove()
-{
-    AACT_CharacterBase* ControlledCharacter = Cast<AACT_CharacterBase>(GetPawn());
-
-    if (ControlledCharacter)
-    {
-        ControlledCharacter->SetMoveIntent(FVector::ZeroVector);
     }
 }

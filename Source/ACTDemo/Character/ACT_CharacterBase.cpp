@@ -10,6 +10,7 @@
 #include "EngineUtils.h"
 #include "GameFramework/Controller.h"
 #include "AbilitySystemBlueprintLibrary.h"
+#include "Weapon/ACT_EquipmentComponent.h"
 
 // Sets default values
 AACT_CharacterBase::AACT_CharacterBase()
@@ -29,6 +30,7 @@ AACT_CharacterBase::AACT_CharacterBase()
     AbilitySystemComponent = CreateDefaultSubobject<UACT_AbilitySystemComponent>(TEXT("AbilitySystemComponent"));
 
     ComboComponent = CreateDefaultSubobject<UACT_ComboComponent>(TEXT("ComboComponent"));
+    EquipmentComponent = CreateDefaultSubobject<UACT_EquipmentComponent>(TEXT("EquipmentComponent"));
 }
 
 // Called when the game starts or when spawned
@@ -58,6 +60,11 @@ void AACT_CharacterBase::Tick(float DeltaTime)
 
 void AACT_CharacterBase::MoveInWorldDirection(FVector Direction, float Scale)
 {
+    if (ComboComponent && ComboComponent->IsComboActive())
+    {
+        return;
+    }
+
     AddMovementInput(Direction.GetSafeNormal2D(), Scale);
 }
 
@@ -265,7 +272,24 @@ bool AACT_CharacterBase::RequestLightAttack(FGameplayTag AbilityTag, FGameplayTa
 
 void AACT_CharacterBase::SetMoveIntent(const FVector& Direction)
 {
+    const bool bPreviouslyHadInput = HasMoveIntent();
+
     MoveIntent = Direction.GetClampedToMaxSize2D(1.0f);
+
+    if (!bPreviouslyHadInput && HasMoveIntent())
+    {
+        FGameplayEventData EventData;
+        EventData.EventTag = FGameplayTag::RequestGameplayTag(TEXT("Event.Move.Input"));
+        EventData.Instigator = this;
+
+        UAbilitySystemBlueprintLibrary::SendGameplayEventToActor(this, EventData.EventTag, EventData);
+    }
+}
+
+bool AACT_CharacterBase::HasMoveIntent() const
+{
+    constexpr float InputThreshold = 0.1f;
+    return MoveIntent.SizeSquared2D() > FMath::Square(InputThreshold);
 }
 
 void AACT_CharacterBase::SetAttackTurnWindow(bool bOpen)
@@ -296,4 +320,9 @@ void AACT_CharacterBase::UpdateAttackTurn(float DeltaTime)
 void AACT_CharacterBase::CaptureAttackDirection()
 {
     AttackDirection = MoveIntent.IsNearlyZero() ? GetActorForwardVector().GetSafeNormal2D() : MoveIntent.GetSafeNormal2D();
+}
+
+UACT_EquipmentComponent* AACT_CharacterBase::GetEquipmentComponent() const
+{
+    return EquipmentComponent;
 }

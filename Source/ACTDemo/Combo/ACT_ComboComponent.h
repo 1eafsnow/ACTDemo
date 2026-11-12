@@ -6,6 +6,7 @@
 #include "Components/ActorComponent.h"
 #include "GameplayTagContainer.h"
 #include "ACT_ComboData.h"
+#include "TimerManager.h"
 #include "ACT_ComboComponent.generated.h"
 
 /** Sent after an attack montage has started successfully. */
@@ -77,8 +78,18 @@ public:
     UPROPERTY(BlueprintAssignable, Category = "Combo")
     FACT_OnAttackStarted OnAttackStarted;
 
+    /** Saves the current combo node for a short time after movement cancellation. */
+    void StartResumeWindow();
+
+    /** Clears any saved combo continuation. */
+    void ClearResumeWindow();
+
 protected:
     virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
+
+    // Time allowed to continue a combo after movement cancellation.
+    UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Combo", meta = (ClampMin = "0.0"))
+    float ResumeWindowDuration = 0.5f;
 
 private:
     const FACT_ComboNode* FindNode(FName NodeId) const;
@@ -93,5 +104,11 @@ private:
     FName PendingNodeId = NAME_None;
     FGameplayTag BufferedInput;
     bool bInputWindowOpen = false;
+
+    UPROPERTY(Transient)
+    TObjectPtr<UACT_ComboData> ResumeComboData = nullptr;
+
+    FName ResumeNodeId = NAME_None;
+    FTimerHandle ResumeTimerHandle;
 
 };

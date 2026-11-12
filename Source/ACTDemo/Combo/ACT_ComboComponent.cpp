@@ -2,6 +2,7 @@
 
 
 #include "Combo/ACT_ComboComponent.h"
+#include "Engine/World.h"
 #include "Debug/ACT_Debug.h"
 
 // Sets default values for this component's properties
@@ -25,7 +26,30 @@ bool UACT_ComboComponent::StartCombo(UACT_ComboData* ComboData, FGameplayTag Inp
 
     ActiveComboData = ComboData;
 
-    const FName EntryNodeId = FindEntryNode(InputTag);
+    FName EntryNodeId = NAME_None;
+
+    if (ResumeComboData == ComboData && !ResumeNodeId.IsNone())
+    {
+        const FACT_ComboNode* ResumeNode = FindNode(ResumeNodeId);
+
+        if (ResumeNode)
+        {
+            const FACT_ComboTransition* Transition = ResumeNode->Transitions.FindByPredicate([InputTag](const FACT_ComboTransition& Item) { return Item.InputTag == InputTag; });
+
+            if (Transition)
+            {
+                EntryNodeId = Transition->NextNodeId;
+            }
+        }
+    }
+
+    ClearResumeWindow();
+
+    if (EntryNodeId.IsNone())
+    {
+        EntryNodeId = FindEntryNode(InputTag);
+    }
+
     const FACT_ComboNode* EntryNode = FindNode(EntryNodeId);
 
     if (!EntryNode || !EntryNode->Montage)
@@ -150,6 +174,7 @@ void UACT_ComboComponent::NotifyAttackStarted()
 
 void UACT_ComboComponent::EndPlay(const EEndPlayReason::Type EndPlayReason)
 {
+    ClearResumeWindow();
     ResetState();
     Super::EndPlay(EndPlayReason);
 }
@@ -199,3 +224,28 @@ void UACT_ComboComponent::ResetState()
     bInputWindowOpen = false;
 }
 
+void UACT_ComboComponent::StartResumeWindow()
+{
+    ClearResumeWindow();
+
+    if (!IsComboActive() || CurrentNodeId.IsNone() || ResumeWindowDuration <= 0.0f || !GetWorld())
+    {
+        return;
+    }
+
+    ResumeComboData = ActiveComboData;
+    ResumeNodeId = CurrentNodeId;
+
+    GetWorld()->GetTimerManager().SetTimer(ResumeTimerHandle, this, &UACT_ComboComponent::ClearResumeWindow, ResumeWindowDuration, false);
+}
+
+void UACT_ComboComponent::ClearResumeWindow()
+{
+    if (UWorld* World = GetWorld())
+    {
+        World->GetTimerManager().ClearTimer(ResumeTimerHandle);
+    }
+
+    ResumeComboData = nullptr;
+    ResumeNodeId = NAME_None;
+}

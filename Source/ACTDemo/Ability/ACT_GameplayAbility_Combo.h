@@ -79,4 +79,11 @@ private:
 
     TWeakObjectPtr<class AACT_CharacterBase> TurnWindowCharacter;
     bool bOwnsTurnWindow = false;
+
+    UFUNCTION()
+    void HandleMoveInput(FGameplayEventData Payload);
+
+    void TryCancelForMovement();
+
+    bool bCanMoveCancel = false;
 };

@@ -26,6 +26,13 @@ protected:
 
     virtual void SetupInputComponent() override;
 
+    // Asset tag used to find the granted light attack ability.
+    UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Input")
+    FGameplayTag LightAttackAbilityTag;
+    // Input tag submitted to the active combo.
+    UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Input")
+    FGameplayTag LightAttackInputTag;
+
     // Input mapping context added for the local player.
     UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Input")
     TObjectPtr<UInputMappingContext> InputMappingContext;
@@ -33,36 +40,21 @@ protected:
     // Axis2D action: X is right/left, Y is forward/backward.
     UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Input")
     TObjectPtr<UInputAction> MoveAction;
-
     // Axis2D action: X controls yaw, Y controls pitch.
     UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Input")
     TObjectPtr<UInputAction> LookAction;
-
     // Input action used for light attacks.
     UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Input")
     TObjectPtr<UInputAction> LightAttackAction;
-
-    // Asset tag used to find the granted light attack ability.
-    UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Input")
-    FGameplayTag LightAttackAbilityTag;
-
-    // Input tag submitted to the active combo.
-    UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Input")
-    FGameplayTag LightAttackInputTag;
-
     // Input action used to toggle target lock.
     UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Input")
     TObjectPtr<UInputAction> TargetLockAction;
 
 private:
     void Move(const FInputActionValue& Value);
-
-    void Look(const FInputActionValue& Value);
-
-    void LightAttack();
-
-    void ToggleTargetLock();
-
     void StopMove();
+    void Look(const FInputActionValue& Value);
+    void LightAttack();
+    void ToggleTargetLock();
 	
 };

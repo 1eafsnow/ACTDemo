@@ -11,6 +11,7 @@
 class UACT_AbilitySystemComponent;
 class UGameplayAbility;
 class UACT_ComboComponent;
+class UACT_EquipmentComponent;
 
 /**
  * Common base class for player and enemy characters.
@@ -24,9 +25,15 @@ protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Combat")
 	TObjectPtr<UACT_ComboComponent> ComboComponent;
 
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Equipment")
+	TObjectPtr<UACT_EquipmentComponent> EquipmentComponent;
+
 public:
 	// Sets default values for this character's properties
 	AACT_CharacterBase();
+
+	UFUNCTION(BlueprintPure, Category = "Equipment")
+	UACT_EquipmentComponent* GetEquipmentComponent() const;
 
 protected:
 	// Called when the game starts or when spawned
@@ -69,6 +76,10 @@ public:
 
 	/** Stores the current movement input in world space. */
 	void SetMoveIntent(const FVector& Direction);
+
+	/** Returns whether the character currently has movement input. */
+	UFUNCTION(BlueprintPure, Category = "Character|Movement")
+	bool HasMoveIntent() const;
 
 	/** Opens or closes the attack turning window. */
 	UFUNCTION(BlueprintCallable, Category = "Combat|Rotation")

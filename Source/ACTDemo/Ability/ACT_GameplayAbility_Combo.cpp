@@ -10,7 +10,7 @@
 #include "Components/SkeletalMeshComponent.h"
 #include "GameFramework/Actor.h"
 #include "Character/ACT_CharacterBase.h"
-#include "Abilities/Tasks/AbilityTask_WaitGameplayEvent.h"
+#include "Weapon/ACT_EquipmentComponent.h"
 
 UACT_GameplayAbility_Combo::UACT_GameplayAbility_Combo()
 {
@@ -31,8 +31,9 @@ void UACT_GameplayAbility_Combo::ActivateAbility(const FGameplayAbilitySpecHandl
     ActiveComboComponent = nullptr;
     ActiveMontage = nullptr;
     bTransitionReached = false;
+    bCanMoveCancel = false;
 
-    if (!ActorInfo || !ActorInfo->AvatarActor.IsValid() || !ComboData || !EntryInputTag.IsValid())
+    if (!ActorInfo || !ActorInfo->AvatarActor.IsValid() || !EntryInputTag.IsValid())
     {
         UE_LOG(LogTemp, Warning, TEXT("Combo ability is missing an avatar, combo data, or entry input tag."));
         EndAbility(Handle, ActorInfo, ActivationInfo, true, true);
@@ -65,9 +66,21 @@ void UACT_GameplayAbility_Combo::ActivateAbility(const FGameplayAbilitySpecHandl
         return;
     }
 
-    FACT_ComboNode EntryAttack;
+    UACT_ComboData* SelectedComboData = ComboData;
+    AACT_CharacterBase* CharacterBase = Cast<AACT_CharacterBase>(ActorInfo->AvatarActor.Get());
+    if (CharacterBase && CharacterBase->GetEquipmentComponent() && CharacterBase->GetEquipmentComponent()->GetWeaponComboData())
+    {
+        SelectedComboData = CharacterBase->GetEquipmentComponent()->GetWeaponComboData();
+    }
+    if (!SelectedComboData)
+    {
+        UE_LOG(LogTemp, Warning, TEXT("No combo data is available for the equipped weapon."));
+        EndAbility(Handle, ActorInfo, ActivationInfo, true, true);
+        return;
+    }
 
-    if (!ActiveComboComponent->StartCombo(ComboData, EntryInputTag, EntryAttack))
+    FACT_ComboNode EntryAttack;
+    if (!ActiveComboComponent->StartCombo(SelectedComboData, EntryInputTag, EntryAttack))
     {
         UE_LOG(LogTemp, Warning, TEXT("Failed to find the combo entry attack."));
         EndAbility(Handle, ActorInfo, ActivationInfo, true, true);
@@ -88,13 +101,15 @@ bool UACT_GameplayAbility_Combo::StartWindowEventTasks()
     const FGameplayTag TransitionTag = FGameplayTag::RequestGameplayTag(TEXT("Event.Combo.Transition"));
     const FGameplayTag CloseTag = FGameplayTag::RequestGameplayTag(TEXT("Event.Combo.Window.Close"));
     const FGameplayTag InputTag = FGameplayTag::RequestGameplayTag(TEXT("Event.Combo.Input"));
+    const FGameplayTag MoveTag = FGameplayTag::RequestGameplayTag(TEXT("Event.Move.Input"));
 
     UAbilityTask_WaitGameplayEvent* OpenTask = UAbilityTask_WaitGameplayEvent::WaitGameplayEvent(this, OpenTag, nullptr, false, true);
     UAbilityTask_WaitGameplayEvent* TransitionTask = UAbilityTask_WaitGameplayEvent::WaitGameplayEvent(this, TransitionTag, nullptr, false, true);
     UAbilityTask_WaitGameplayEvent* CloseTask = UAbilityTask_WaitGameplayEvent::WaitGameplayEvent(this, CloseTag, nullptr, false, true);
     UAbilityTask_WaitGameplayEvent* InputTask = UAbilityTask_WaitGameplayEvent::WaitGameplayEvent(this, InputTag, nullptr, false, true);
+    UAbilityTask_WaitGameplayEvent* MoveTask = UAbilityTask_WaitGameplayEvent::WaitGameplayEvent(this, MoveTag, nullptr, false, true);
 
-    if (!OpenTask || !TransitionTask || !CloseTask || !InputTask)
+    if (!OpenTask || !TransitionTask || !CloseTask || !InputTask || !MoveTask)
     {
         return false;
     }
@@ -103,11 +118,13 @@ bool UACT_GameplayAbility_Combo::StartWindowEventTasks()
     TransitionTask->EventReceived.AddDynamic(this, &UACT_GameplayAbility_Combo::HandleTransition);
     CloseTask->EventReceived.AddDynamic(this, &UACT_GameplayAbility_Combo::HandleWindowClose);
     InputTask->EventReceived.AddDynamic(this, &UACT_GameplayAbility_Combo::HandleComboInput);
+    MoveTask->EventReceived.AddDynamic(this, &UACT_GameplayAbility_Combo::HandleMoveInput);
 
     OpenTask->ReadyForActivation();
     TransitionTask->ReadyForActivation();
     CloseTask->ReadyForActivation();
     InputTask->ReadyForActivation();
+    MoveTask->ReadyForActivation();
 
     return true;
 }
@@ -186,6 +203,7 @@ bool UACT_GameplayAbility_Combo::TransitionToAttack(const FACT_ComboNode& Attack
         return false;
     }
 
+    bCanMoveCancel = false;
     AnimInstance->Montage_JumpToSection(AttackNode.SectionName, ActiveMontage);
     ActiveComboComponent->NotifyAttackStarted();
     return true;
@@ -210,7 +228,14 @@ void UACT_GameplayAbility_Combo::HandleTransition(FGameplayEventData Payload)
     }
 
     bTransitionReached = true;
+    bCanMoveCancel = true;
+
     TryCommitBufferedInput();
+
+    if (IsActive() && !bEndingAbility && bCanMoveCancel)
+    {
+        TryCancelForMovement();
+    }
 }
 
 void UACT_GameplayAbility_Combo::HandleWindowClose(FGameplayEventData Payload)
@@ -290,6 +315,7 @@ void UACT_GameplayAbility_Combo::EndAbility(const FGameplayAbilitySpecHandle Han
     ActiveMontage = nullptr;
     ActiveComboComponent = nullptr;
     bTransitionReached = false;
+    bCanMoveCancel = false;
 
     if (bOwnsTurnWindow)
     {
@@ -355,4 +381,33 @@ void UACT_GameplayAbility_Combo::HandleTurnWindowClose(FGameplayEventData Payloa
 
     bOwnsTurnWindow = false;
     TurnWindowCharacter.Reset();
+}
+
+void UACT_GameplayAbility_Combo::HandleMoveInput(FGameplayEventData Payload)
+{
+    TryCancelForMovement();
+}
+
+void UACT_GameplayAbility_Combo::TryCancelForMovement()
+{
+    if (!IsActive() || bEndingAbility || !bCanMoveCancel)
+    {
+        return;
+    }
+
+    AACT_CharacterBase* CharacterBase = Cast<AACT_CharacterBase>(GetAvatarActorFromActorInfo());
+
+    if (!CharacterBase || !CharacterBase->HasMoveIntent())
+    {
+        return;
+    }
+
+    if (ActiveComboComponent && bOwnsCombo)
+    {
+        ActiveComboComponent->StartResumeWindow();
+    }
+
+    bCanMoveCancel = false;
+
+    EndAbility(CurrentSpecHandle, CurrentActorInfo, CurrentActivationInfo, true, true);
 }

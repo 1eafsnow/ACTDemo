@@ -4,11 +4,13 @@
 
 #include "CoreMinimal.h"
 #include "Components/ActorComponent.h"
+#include "Animation/AnimInstance.h"
 #include "ACT_EquipmentComponent.generated.h"
 
 class AACT_Weapon;
 class UACT_WeaponData;
 class UACT_ComboData;
+class UAnimInstance;
 
 /**
  * Manages the character's equipped weapon.
